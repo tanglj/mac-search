@@ -1,0 +1,62 @@
+{
+  "platform": "macOS-27.2.1-arm64-arm-64bit-Mach-O",
+  "mode": "synthetic",
+  "entries": 1000000,
+  "preparation_seconds": null,
+  "indexing_seconds": 23.893,
+  "statistics": {
+    "databaseBytes": 693616640,
+    "directoryCount": 0,
+    "entryCount": 1000000,
+    "fileCount": 1000000,
+    "rootCount": 1,
+    "sqliteVersion": "3.54.0",
+    "trigramEnabled": true
+  },
+  "samples_per_query": 10,
+  "queries": [
+    {
+      "query": "annual_report",
+      "returned": 100,
+      "p50_ms": 1430.11,
+      "p95_ms": 3615.31
+    },
+    {
+      "query": "0000040",
+      "returned": 1,
+      "p50_ms": 8.6,
+      "p95_ms": 10.35
+    },
+    {
+      "query": "合同",
+      "returned": 100,
+      "p50_ms": 1017.06,
+      "p95_ms": 1490.13
+    },
+    {
+      "query": "客户合同",
+      "returned": 100,
+      "p50_ms": 305.67,
+      "p95_ms": 620.52
+    },
+    {
+      "query": "100%_",
+      "returned": 100,
+      "p50_ms": 303.3,
+      "p95_ms": 1132.09
+    },
+    {
+      "query": "report 2026",
+      "returned": 100,
+      "p50_ms": 322.97,
+      "p95_ms": 489.29
+    },
+    {
+      "query": "不存在",
+      "returned": 0,
+      "p50_ms": 8.38,
+      "p95_ms": 9.96
+    }
+  ],
+  "limitations": "本机热缓存，含进程启动与 JSON 输出；synthetic 批量导入后重建 FTS，不测扫描或正常写入吞吐，不测冷缓存或峰值内存。"
+}
