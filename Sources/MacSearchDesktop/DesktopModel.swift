@@ -247,6 +247,11 @@ final class DesktopModel: ObservableObject {
         }
     }
 
+    func previewURLForSelection() -> URL? {
+        guard !isSearching, let file = selected, verifyFile(file) else { return nil }
+        return URL(fileURLWithPath: file.path)
+    }
+
     func revealSelection() {
         guard !isSearching, let file = selected, verifyFile(file) else { return }
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: file.path)])
@@ -337,4 +342,5 @@ final class DesktopModel: ObservableObject {
 
 extension Notification.Name {
     static let focusMacSearch = Notification.Name("com.macsearch.focus-search")
+    static let selectionChanged = Notification.Name("com.macsearch.selection-changed")
 }

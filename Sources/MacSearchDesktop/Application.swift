@@ -1,4 +1,5 @@
 import AppKit
+@preconcurrency import QuickLookUI
 import SwiftUI
 import MacSearchCore
 
@@ -13,13 +14,25 @@ enum MacSearchDesktopApp {
     }
 }
 
+private final class QuickLookPreviewItem: NSObject, QLPreviewItem {
+    let previewItemURL: URL?
+    let previewItemTitle: String?
+
+    init(url: URL) {
+        previewItemURL = url
+        previewItemTitle = url.lastPathComponent
+    }
+}
+
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, @preconcurrency QLPreviewPanelDataSource, QLPreviewPanelDelegate {
     private var window: NSWindow!
     private var statusItem: NSStatusItem!
     private var model: DesktopModel!
     private let hotKey = GlobalHotKey()
     private var keyMonitor: Any?
+    private var selectionObserver: NSObjectProtocol?
+    private var previewItems: [QuickLookPreviewItem] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let other = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.macsearch.desktop")
@@ -49,6 +62,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.center()
         configureStatusItem()
         configureKeyMonitor()
+        selectionObserver = NotificationCenter.default.addObserver(forName: .selectionChanged, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, let panel = QLPreviewPanel.shared(), panel.isVisible else { return }
+                self.previewItems = self.model.previewURLForSelection().map { [QuickLookPreviewItem(url: $0)] } ?? []
+                panel.reloadData()
+            }
+        }
         setHotKey(model.hotKeyEnabled)
         model.start()
         showWindow()
@@ -124,6 +144,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     self.window.makeFirstResponder(table)
                     return true
                 }
+                if event.keyCode == 49 && modifiers.isEmpty,
+                   let table = self.findTable(in: self.window.contentView), self.window.firstResponder === table,
+                   self.model.selected != nil, !self.model.isSearching {
+                    self.toggleQuickLook()
+                    return true
+                }
                 return false
             }
             return consumed ? nil : event
@@ -143,6 +169,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         hotKey.onPressed = { [weak self] in self?.toggleWindow() }
         do { try hotKey.register() }
         catch { model.hotKeyError = error.localizedDescription }
+    }
+
+    private func toggleQuickLook() {
+        guard let panel = QLPreviewPanel.shared() else { return }
+        if panel.isVisible {
+            panel.orderOut(nil)
+            return
+        }
+        guard let url = model.previewURLForSelection() else { return }
+        previewItems = [QuickLookPreviewItem(url: url)]
+        panel.dataSource = self
+        panel.delegate = self
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int { previewItems.count }
+
+    func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> QLPreviewItem! {
+        previewItems[index]
     }
 
     @objc private func showWindow() {
@@ -177,6 +222,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let model else { return .terminateNow }
         hotKey.unregister()
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        if let selectionObserver { NotificationCenter.default.removeObserver(selectionObserver) }
+        if let panel = QLPreviewPanel.shared(), panel.isVisible { panel.orderOut(nil) }
         model.shutdown { Task { @MainActor in NSApp.reply(toApplicationShouldTerminate: true) } }
         return .terminateLater
     }

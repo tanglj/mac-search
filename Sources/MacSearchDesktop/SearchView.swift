@@ -65,6 +65,7 @@ struct SearchView: View {
         .onChange(of: model.kind) { _ in model.scheduleSearch(resetLimit: true) }
         .onChange(of: model.scopeID) { _ in model.scheduleSearch(resetLimit: true) }
         .onChange(of: model.sortOrder) { _ in model.scheduleSearch(resetLimit: true) }
+        .onChange(of: model.selection) { _ in NotificationCenter.default.post(name: .selectionChanged, object: nil) }
         .onExitCommand { model.hideWindow?() }
         .sheet(isPresented: $model.showDirectories) { DirectoryManagerView(model: model) }
         .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
@@ -321,7 +322,7 @@ struct SearchView: View {
                          ? "正在更新结果 · 当前显示 \(model.hits.count) 个"
                          : "\(model.hits.count) 个结果 · \(String(format: "%.0f", model.milliseconds)) ms")
                         .font(.system(size: 11, weight: .medium))
-                    Text(model.selected?.path ?? "↑↓ 选择结果  ·  回车打开  ·  ⌘↩ 在 Finder 中显示")
+                    Text(model.selected?.path ?? "↑↓ 选择结果  ·  空格预览  ·  回车打开  ·  ⌘↩ 在 Finder 中显示")
                         .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
                 Spacer(minLength: 8)
