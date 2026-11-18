@@ -164,7 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func copyPath() { model.copySelection() }
     @objc private func trashSelection() { model.requestTrash() }
     @objc private func showAbout() {
-        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "MacSearch", .applicationVersion: "1.0.0",
+        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "MacSearch", .applicationVersion: "1.1.0",
                                                      .credits: NSAttributedString(string: "完全离线的 macOS 原生文件搜索")])
     }
 

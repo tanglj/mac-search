@@ -121,4 +121,28 @@ final class DesktopKitTests: XCTestCase, @unchecked Sendable {
         catch SearchError.searchCancelled {}
         catch { XCTFail("Unexpected cancellation error: \(error)") }
     }
+
+    func testCachedQueryInvalidatesAfterRebuildAndRemoval() async throws {
+        let writer = try IndexStore(databasePath: database, mode: .readWrite)
+        let root = try writer.addRoot(data.path)
+        _ = try writer.rebuild()
+        let service = SearchService(databasePath: database)
+        let options = SearchOptions(query: "合同")
+        let initial = try await service.search(options)
+        XCTAssertEqual(initial.files.count, 1)
+        let cached = try await service.search(options)
+        XCTAssertEqual(cached.files.map(\.path), initial.files.map(\.path))
+        XCTAssertEqual(cached.milliseconds, 0)
+
+        let added = data.appendingPathComponent("新合同.docx")
+        try Data().write(to: added)
+        _ = try writer.rebuild()
+        let updated = try await service.search(options)
+        XCTAssertEqual(updated.files.count, 2)
+
+        try FileManager.default.removeItem(at: added)
+        XCTAssertTrue(try writer.removeMissingEntry(rootID: root.id, path: added.path))
+        let removed = try await service.search(options)
+        XCTAssertEqual(removed.files.map(\.path), initial.files.map(\.path))
+    }
 }

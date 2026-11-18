@@ -35,15 +35,15 @@ public struct FileRecord: Codable, Sendable {
     public let rootStatus: String
 }
 
-public enum EntryKind: String, Sendable {
+public enum EntryKind: String, Sendable, Hashable {
     case all, file, directory
 }
 
-public enum SearchSortField: String, Sendable {
+public enum SearchSortField: String, Sendable, Hashable {
     case relevance, name, parentPath, modifiedAt, size
 }
 
-public enum SearchSortDirection: String, Sendable {
+public enum SearchSortDirection: String, Sendable, Hashable {
     case ascending, descending
 }
 

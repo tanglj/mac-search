@@ -22,9 +22,23 @@ extension IndexStore {
         var filterValues: [SQLValue] = []
         if let directory = options.directory {
             let path = Paths.canonical(directory)
-            let prefix = path == "/" ? "/" : path + "/"
-            filters.append("(f.path = ? OR instr(f.path, ?) = 1)")
-            filterValues += [.text(path), .text(prefix)]
+            if path == "/" {
+                // All indexed paths are absolute. Keep the root case simple and
+                // avoid a function call on every row.
+                filters.append("f.path COLLATE BINARY >= ?")
+                filterValues.append(.text("/"))
+            } else {
+                let prefix = path + "/"
+                if let upperBound = prefixUpperBound(prefix) {
+                    // The range includes descendants while preserving the
+                    // directory boundary (e.g. /data does not match /database).
+                    filters.append("(f.path COLLATE BINARY = ? OR (f.path COLLATE BINARY >= ? AND f.path COLLATE BINARY < ?))")
+                    filterValues += [.text(path), .text(prefix), .text(upperBound)]
+                } else {
+                    filters.append("(f.path = ? OR instr(f.path, ?) = 1)")
+                    filterValues += [.text(path), .text(prefix)]
+                }
+            }
         }
         if !options.extensions.isEmpty {
             let extensions = options.extensions.map { Paths.normalize($0.hasPrefix(".") ? String($0.dropFirst()) : $0) }

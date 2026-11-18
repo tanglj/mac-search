@@ -126,7 +126,9 @@ final class DesktopModel: ObservableObject {
                                     sort: searchSortField, direction: sortOrder.first?.order == .reverse ? .descending : .ascending)
         searchTask = Task { [weak self] in
             do {
-                try await Task.sleep(for: .milliseconds(120))
+                // Wait for a short pause before querying so rapid typing only
+                // submits the final query, while keeping the database idle.
+                try await Task.sleep(for: .milliseconds(300))
                 guard let self else { return }
                 let response = try await searchService.search(options)
                 guard !Task.isCancelled, revision == searchGeneration else { return }
@@ -142,6 +144,65 @@ final class DesktopModel: ObservableObject {
                 searchError = error.localizedDescription
             }
         }
+    }
+
+    /// Returns the extensions currently selected in the comma-separated filter.
+    /// Comparison is case-insensitive and ignores an optional leading dot.
+    func hasExtensionFilter(_ value: String) -> Bool {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+            .lowercased()
+        guard !normalized.isEmpty else { return false }
+        return extensionFilter.split(separator: ",", omittingEmptySubsequences: true).contains {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+                .lowercased() == normalized
+        }
+    }
+
+    func hasAnyExtensionFilter(_ values: [String]) -> Bool {
+        values.contains { hasExtensionFilter($0) }
+    }
+
+    func hasAllExtensionFilters(_ values: [String]) -> Bool {
+        !values.isEmpty && values.allSatisfy { hasExtensionFilter($0) }
+    }
+
+    func toggleExtensionFilter(_ value: String) {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+            .lowercased()
+        guard !normalized.isEmpty else { return }
+        var values = extensionFilter.split(separator: ",", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        if let index = values.firstIndex(where: {
+            $0.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased() == normalized
+        }) {
+            values.remove(at: index)
+        } else {
+            values.append(normalized)
+        }
+        extensionFilter = values.joined(separator: ",")
+    }
+
+    func toggleExtensionFilters(_ values: [String]) {
+        let shouldRemove = hasAllExtensionFilters(values)
+        var selected = extensionFilter.split(separator: ",", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let normalizedValues = values.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        if shouldRemove {
+            selected.removeAll { item in
+                let normalized = item.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+                return normalizedValues.contains(normalized)
+            }
+        } else {
+            for value in normalizedValues where !hasExtensionFilter(value) {
+                selected.append(value)
+            }
+        }
+        extensionFilter = selected.joined(separator: ",")
     }
 
     var selected: FileRecord? { hits.first(where: { $0.id == selection })?.file }

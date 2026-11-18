@@ -26,8 +26,8 @@ cat > "$app_dir/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>MacSearch</string>
 <key>CFBundleExecutable</key><string>MacSearchDesktop</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.0.0</string>
-<key>CFBundleVersion</key><string>8</string>
+<key>CFBundleShortVersionString</key><string>1.1.0</string>
+<key>CFBundleVersion</key><string>9</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
@@ -43,8 +43,8 @@ cat > "$app_dir/Contents/Info.plist" <<'PLIST'
 PLIST
 icon_dir="$project_dir/.build/app/AppIcon.iconset"
 mkdir -p "$icon_dir"
-if [[ ! -f "$resources/AppIcon.icns" || "$project_dir/scripts/generate_icon.swift" -nt "$resources/AppIcon.icns" ]]; then
-    swift "$project_dir/scripts/generate_icon.swift" "$project_dir/.build/app/icon.png"
+if [[ ! -f "$resources/AppIcon.icns" || "$project_dir/scripts/generate_icon.swift" -nt "$resources/AppIcon.icns" || "$project_dir/Resources/AppIcon.png" -nt "$resources/AppIcon.icns" ]]; then
+    swift -module-cache-path "$project_dir/.build/icon-module-cache" "$project_dir/scripts/generate_icon.swift" "$project_dir/.build/app/icon.png"
     for size in 16 32 128 256 512; do
         /usr/bin/sips -z "$size" "$size" "$project_dir/.build/app/icon.png" --out "$icon_dir/icon_${size}x${size}.png" >/dev/null
         double=$((size * 2))

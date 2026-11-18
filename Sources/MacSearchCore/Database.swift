@@ -116,6 +116,7 @@ final class Database {
                 try execute("PRAGMA synchronous = NORMAL")
                 try execute("PRAGMA temp_store = FILE")
                 try migrate()
+                try ensureQueryIndexes()
                 try execute("UPDATE index_roots SET status = 'interrupted', last_error = '上次扫描未完成，请重新构建索引' WHERE status IN ('scanning', 'reconciling')")
             } else {
                 try execute("PRAGMA query_only = ON")
@@ -242,5 +243,14 @@ final class Database {
             try execute("INSERT INTO metadata VALUES ('trigram', ?)", [.text(supportsTrigram ? "1" : "0")])
             try execute("PRAGMA user_version = 1")
         }
+    }
+
+    /// These indexes are added lazily so existing databases benefit without a
+    /// destructive rebuild or a schema-version bump.
+    private func ensureQueryIndexes() throws {
+        try execute("CREATE INDEX IF NOT EXISTS idx_files_root_name ON files(root_id, normalized_name COLLATE BINARY)")
+        try execute("CREATE INDEX IF NOT EXISTS idx_files_extension_name ON files(extension, normalized_name COLLATE BINARY)")
+        try execute("CREATE INDEX IF NOT EXISTS idx_files_modified ON files(modified_at)")
+        try execute("CREATE INDEX IF NOT EXISTS idx_files_size ON files(size)")
     }
 }

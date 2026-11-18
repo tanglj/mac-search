@@ -19,6 +19,12 @@ public final class IndexStore {
         guard database.writable else { throw SearchError.message("此连接为只读模式。") }
     }
 
+    /// Changes when another connection commits. Compare only on this connection,
+    /// outside a read transaction, when validating cached query results.
+    public func dataVersion() throws -> Int64 {
+        try database.scalar("PRAGMA data_version")
+    }
+
     @discardableResult
     public func addRoot(_ path: String) throws -> IndexRoot {
         try requireWriter()

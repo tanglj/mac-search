@@ -4,6 +4,39 @@ import MacSearchCore
 
 private let accent = Color(red: 0.13, green: 0.44, blue: 0.33)
 
+@MainActor
+private final class FileIconCache {
+    static let shared = FileIconCache()
+    private let cache = NSCache<NSString, NSImage>()
+
+    private init() { cache.countLimit = 2048 }
+
+    func image(for path: String) -> NSImage {
+        let key = path as NSString
+        if let image = cache.object(forKey: key) { return image }
+        let image = NSWorkspace.shared.icon(forFile: path)
+        cache.setObject(image, forKey: key)
+        return image
+    }
+}
+
+private struct ExtensionGroup: Identifiable {
+    let title: String
+    let extensions: [String]
+    var id: String { title }
+}
+
+private let commonExtensionGroups = [
+    ExtensionGroup(title: "Office", extensions: ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "pages", "numbers", "key", "rtf", "odt", "ods", "odp"]),
+    ExtensionGroup(title: "PDF", extensions: ["pdf"]),
+    ExtensionGroup(title: "音频", extensions: ["mp3", "m4a", "wav", "flac", "aac", "ogg", "aiff"]),
+    ExtensionGroup(title: "视频", extensions: ["mp4", "mov", "mkv", "avi", "webm", "m4v", "wmv"]),
+    ExtensionGroup(title: "JSON", extensions: ["json", "jsonl"]),
+    ExtensionGroup(title: "Markdown", extensions: ["md", "markdown", "mdown", "mkd"]),
+    ExtensionGroup(title: "图片", extensions: ["jpg", "jpeg", "png", "gif", "webp", "svg", "heic", "tif", "tiff", "bmp"]),
+    ExtensionGroup(title: "压缩包", extensions: ["zip", "rar", "7z", "tar", "gz", "bz2", "xz"])
+]
+
 struct SearchView: View {
     @ObservedObject var model: DesktopModel
     @FocusState private var searchFocused: Bool
@@ -149,11 +182,25 @@ struct SearchView: View {
                     Text("文件").tag(EntryKind.file)
                     Text("目录").tag(EntryKind.directory)
                 }.labelsHidden().frame(width: 110).accessibilityLabel("文件类型筛选")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(commonExtensionGroups) { group in
+                            extensionChip(group)
+                        }
+                    }
+                }
+                .frame(minWidth: 420, maxWidth: .infinity)
+                .layoutPriority(0)
+                .accessibilityLabel("常用扩展名")
                 HStack(spacing: 5) {
                     Image(systemName: "line.3.horizontal.decrease").foregroundStyle(.secondary)
                     TextField("扩展名，如 pdf,docx", text: $model.extensionFilter).textFieldStyle(.plain)
-                        .font(.system(size: 11)).frame(width: 145).accessibilityLabel("扩展名筛选")
+                        .font(.system(size: 11))
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel("扩展名筛选")
                 }
+                .frame(minWidth: 180, idealWidth: 260)
+                .layoutPriority(1)
                 Spacer()
                 if !model.sortOrder.isEmpty {
                     Button("恢复匹配度") { model.sortOrder = [] }
@@ -178,6 +225,26 @@ struct SearchView: View {
         }
     }
 
+    private func extensionChip(_ group: ExtensionGroup) -> some View {
+        let allSelected = model.hasAllExtensionFilters(group.extensions)
+        let partiallySelected = !allSelected && model.hasAnyExtensionFilter(group.extensions)
+        let symbol = allSelected ? "checkmark.square.fill" : (partiallySelected ? "minus.square.fill" : "square")
+        return Button {
+            model.toggleExtensionFilters(group.extensions)
+        } label: {
+            Label(group.title, systemImage: symbol)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(allSelected || partiallySelected ? accent : .secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background((allSelected || partiallySelected ? accent : Color.secondary).opacity(0.10), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(group.extensions.map { ".\($0)" }.joined(separator: ", "))
+        .accessibilityLabel(group.title)
+        .accessibilityValue(allSelected ? "已选择" : (partiallySelected ? "部分选择" : "未选择"))
+    }
+
     @ViewBuilder private var results: some View {
         if model.roots.isEmpty && !model.isBusy {
             emptyState(symbol: "folder.badge.plus", title: "先选一个目录", detail: "添加你希望搜索的文件夹。索引完成后，输入文件名即可找到。") {
@@ -195,7 +262,7 @@ struct SearchView: View {
             Table(model.hits, selection: $model.selection, sortOrder: $model.sortOrder) {
                 TableColumn("名称", value: \.sortName) { hit in
                     HStack(spacing: 8) {
-                        Image(nsImage: NSWorkspace.shared.icon(forFile: hit.file.path)).resizable().frame(width: 20, height: 20)
+                        Image(nsImage: FileIconCache.shared.image(for: hit.file.path)).resizable().frame(width: 20, height: 20)
                         Text(hit.file.name).font(.system(size: 12)).lineLimit(1)
                     }.padding(.vertical, 4)
                 }.width(min: 180, ideal: 255)
@@ -227,7 +294,6 @@ struct SearchView: View {
                 model.selection = paths.first
                 if !model.isSearching { model.openSelection() }
             }
-            .opacity(model.isSearching ? 0.65 : 1)
         }
     }
 
@@ -251,7 +317,9 @@ struct SearchView: View {
             }
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(model.hits.count) 个结果 · \(String(format: "%.0f", model.milliseconds)) ms")
+                    Text(model.isSearching
+                         ? "正在更新结果 · 当前显示 \(model.hits.count) 个"
+                         : "\(model.hits.count) 个结果 · \(String(format: "%.0f", model.milliseconds)) ms")
                         .font(.system(size: 11, weight: .medium))
                     Text(model.selected?.path ?? "↑↓ 选择结果  ·  回车打开  ·  ⌘↩ 在 Finder 中显示")
                         .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
