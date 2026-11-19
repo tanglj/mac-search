@@ -1,10 +1,39 @@
 import Foundation
+import AppKit
 import XCTest
 import MacSearchCore
 @testable import MacSearchDesktopKit
 @testable import MacSearchDesktop
 
 final class DesktopModelTests: XCTestCase {
+    @MainActor
+    func testCopySelectionFileWritesFileURLToPasteboard() throws {
+        let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let file = base.appendingPathComponent("report.txt")
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer {
+            NSPasteboard.general.clearContents()
+            try? FileManager.default.removeItem(at: base)
+        }
+        try Data("report".utf8).write(to: file)
+
+        let database = base.appendingPathComponent("index.sqlite").path
+        let writer = try IndexStore(databasePath: database, mode: .readWrite)
+        _ = try writer.addRoot(base.path)
+        _ = try writer.rebuild()
+        let model = DesktopModel(databasePath: database)
+        model.hits = try writer.search(SearchOptions(query: "report")).map(SearchHit.init)
+        guard let hit = model.hits.first(where: { $0.file.name == file.lastPathComponent }) else {
+            XCTFail("索引中未找到测试文件")
+            return
+        }
+        model.selection = hit.id
+        model.copySelectionFile()
+
+        let fileURL = NSPasteboard.general.string(forType: .fileURL)
+        XCTAssertEqual(URL(string: fileURL ?? "")?.path, hit.file.path)
+    }
+
     @MainActor
     func testRemovalRefreshesBusyListAndRestoredFilesCanReappear() async throws {
         let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).resolvingSymlinksInPath()

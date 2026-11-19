@@ -52,9 +52,9 @@ func sparkle(_ x: CGFloat, _ y: CGFloat, _ radius: CGFloat) -> NSBezierPath {
     path.close()
     return path
 }
-let bottom = isSearch ? color(0.10, 0.29, 0.82) : color(0.02, 0.43, 0.43)
-let top = isSearch ? color(0.17, 0.72, 0.97) : color(0.20, 0.82, 0.66)
-let accent = isSearch ? color(0.13, 0.43, 0.78) : color(0.02, 0.49, 0.43)
+let bottom = isSearch ? color(0.02, 0.43, 0.43) : color(0.10, 0.29, 0.82)
+let top = isSearch ? color(0.20, 0.82, 0.66) : color(0.17, 0.72, 0.97)
+let accent = isSearch ? color(0.02, 0.49, 0.43) : color(0.13, 0.43, 0.78)
 let tile = rounded(100, 100, 824, 824, 186)
 shadowed { fill(tile, bottom) }
 gradient(tile, [bottom, top], 65)

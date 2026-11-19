@@ -285,6 +285,8 @@ struct SearchView: View {
             .contextMenu(forSelectionType: String.self) { paths in
                 Button("打开") { model.selection = paths.first; model.openSelection() }.disabled(paths.isEmpty || model.isSearching)
                 Button("在 Finder 中显示") { model.selection = paths.first; model.revealSelection() }.disabled(paths.isEmpty)
+                Button("复制文件") { model.selection = paths.first; model.copySelectionFile() }
+                    .disabled(paths.isEmpty || model.isSearching)
                 Button("复制路径") { model.selection = paths.first; model.copySelection() }.disabled(paths.isEmpty)
                 Button("复制名称") { model.selection = paths.first; model.copySelectionName() }
                     .disabled(paths.isEmpty || model.isSearching)

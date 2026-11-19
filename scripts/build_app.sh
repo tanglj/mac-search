@@ -26,8 +26,8 @@ cat > "$app_dir/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>MacSearch</string>
 <key>CFBundleExecutable</key><string>MacSearchDesktop</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.1.0</string>
-<key>CFBundleVersion</key><string>9</string>
+<key>CFBundleShortVersionString</key><string>1.2.0</string>
+<key>CFBundleVersion</key><string>10</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>

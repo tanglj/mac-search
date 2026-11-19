@@ -263,6 +263,13 @@ final class DesktopModel: ObservableObject {
         NSPasteboard.general.setString(selected.path, forType: .string)
     }
 
+    func copySelectionFile() {
+        guard !isSearching, let selected else { return }
+        let url = URL(fileURLWithPath: selected.path)
+        NSPasteboard.general.clearContents()
+        _ = NSPasteboard.general.setString(url.absoluteString, forType: .fileURL)
+    }
+
     func copySelectionName() {
         guard !isSearching, let selected else { return }
         NSPasteboard.general.clearContents()

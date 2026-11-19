@@ -150,6 +150,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, @pre
                     self.toggleQuickLook()
                     return true
                 }
+                if event.keyCode == 8 && modifiers == [.command],
+                   let table = self.findTable(in: self.window.contentView), self.window.firstResponder === table,
+                   self.model.selected != nil, !self.model.isSearching {
+                    self.model.copySelectionFile()
+                    return true
+                }
                 return false
             }
             return consumed ? nil : event
@@ -209,7 +215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, @pre
     @objc private func copyPath() { model.copySelection() }
     @objc private func trashSelection() { model.requestTrash() }
     @objc private func showAbout() {
-        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "MacSearch", .applicationVersion: "1.1.0",
+        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "MacSearch", .applicationVersion: "1.2.0",
                                                      .credits: NSAttributedString(string: "完全离线的 macOS 原生文件搜索")])
     }
 
